@@ -1,18 +1,18 @@
 Project Conventions: Reminders app
 1. Core Tech Stack
-Language: Kotlin 2.3.x (Latest Stable).
+Language: Kotlin 1.9.22 (Current).
 
-Min SDK: 28 (Android 9) | Target SDK: 36 (Android 16).
+Min SDK: 26 (Android 8.0) | Target/Compile SDK: 34 (Android 14).
 
-UI Framework: Jetpack Compose (Material Design 3).
+UI Framework: ViewBinding + XML (Transitioning/Planned for Jetpack Compose).
 
 Concurrency: Kotlin Coroutines & Flow.
 
-Dependency Injection: Hilt (Dagger).
+Dependency Injection: Koin (Replacing legacy Android constructs).
 
 Persistence: Room Database (SQL-backed for medication logs).
 
-Build System: Gradle Kotlin DSL (.kts).
+Build System: Gradle Kotlin DSL (.kts) via wrapper 8.9, AGP 8.5.0.
 
 2. Architecture: "Clean App" Principles
 We follow a strict Layered Architecture to ensure the legacy logic is isolated from the modern UI.
@@ -100,3 +100,9 @@ Tool Efficiency: Parallelize independent tool calls (searching, reading files) t
 Absolute Paths: Use absolute paths for all file operations to ensure reliability across different working directories.
 
 Proactive Persistence: Fulfill the user's request thoroughly, including implied follow-ups like updating documentation or tests, and persist through obstacles by diagnosing and adjusting strategies.
+
+11. Project Construction & Environment
+Local SDK & Java Version: Kotlin 1.9.x crashes with a `25.0.2` CoreJrtFileSystem NumberFormatException when run against Java 25+. Always use `openjdk@17` and set it locally via `sdk.dir` and `org.gradle.java.home` in `local.properties`.
+Gradle/AGP Compatibility: To avoid XML v4 parsing bugs from modern `android-commandlinetools` and configuration-cache failures, use Gradle `8.9` alongside Android Gradle Plugin `8.5.0` with `org.gradle.configuration-cache=false`.
+AndroidX Requirement: Must define `android.useAndroidX=true` globally in `gradle.properties`.
+CI Pipeline: GitHub Actions `ubuntu-latest` relies on native `./gradlew assembleDebug`. Maintain `if-no-files-found: error` (or omit for default) to protect pipeline integrity.
