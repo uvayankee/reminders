@@ -12,6 +12,7 @@
 *   **Add/Edit UI:** Created a dedicated screen to manage medications.
 *   **Complex Schedules:** Support for multiple reminder times per day for a single medication.
 *   **Dosage Tracking:** Ability to specify different dosages (e.g., 1 unit, 2 units) for each individual reminder time.
+*   **Deletion Support:** Added ability to delete medications from both the main list and the edit screen, with cascading cleanup of scheduled doses and notification refresh.
 
 ### 3. Daily Schedule & Dose Logging (Issue 5)
 *   **Dual-Tab Home Screen:**
