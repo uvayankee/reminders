@@ -1,0 +1,14 @@
+{
+  "general": {
+    "plan": {
+      "directory": ".gemini/plans"
+    }
+  },
+  "ui": {
+    "inlineThinkingMode": "full",
+    "showStatusInTitle": true,
+    "dynamicWindowTitle": true,
+    "showMemoryUsage": true,
+    "showCitations": true
+  }
+}
