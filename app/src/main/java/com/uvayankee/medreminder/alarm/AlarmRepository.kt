@@ -29,6 +29,10 @@ class AlarmRepository(
         }
     }
 
+    fun refreshNotifications() {
+        alarmScheduler.triggerImmediateNotificationUpdate()
+    }
+
     suspend fun takeDoses(doseIds: LongArray) {
         doseIds.forEach { id ->
             val dose = alarmDao.getDoseById(id) ?: return@forEach

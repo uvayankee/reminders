@@ -32,5 +32,6 @@ class PrescriptionRepository(
     suspend fun deletePrescription(prescription: Prescription) {
         alarmDao.deletePrescription(prescription)
         alarmRepository.reScheduleNextAlarm()
+        alarmRepository.refreshNotifications()
     }
 }

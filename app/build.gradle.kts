@@ -65,6 +65,7 @@ dependencies {
     // WorkManager
     val work_version = "2.9.0"
     implementation("androidx.work:work-runtime-ktx:$work_version")
+    testImplementation("androidx.work:work-testing:$work_version")
     
     // Testing
     testImplementation("junit:junit:4.13.2")

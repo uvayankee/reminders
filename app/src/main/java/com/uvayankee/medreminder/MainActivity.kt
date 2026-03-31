@@ -281,6 +281,20 @@ class MainActivity : AppCompatActivity() {
                 }
                 holder.binding.tvTimes.text = "Reminders: ${timeStrings.joinToString(", ")}"
             }
+            holder.binding.btnDelete.setOnClickListener {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Delete Prescription?")
+                    .setMessage("Are you sure you want to delete ${item.name} and all its scheduled doses?")
+                    .setPositiveButton("Delete") { _, _ ->
+                        lifecycleScope.launch {
+                            prescriptionRepository.deletePrescription(item)
+                            Toast.makeText(this@MainActivity, "Prescription deleted", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+
             holder.itemView.setOnClickListener {
                 val intent = Intent(this@MainActivity, AddEditPrescriptionActivity::class.java).apply {
                     putExtra("id", item.id)

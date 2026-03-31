@@ -3,6 +3,8 @@ package com.uvayankee.medreminder
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.Configuration
+import androidx.work.testing.WorkManagerTestInitHelper
 import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.AlarmScheduler
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
@@ -30,6 +32,10 @@ class PrescriptionSchedulingTest {
     fun createDb() {
         stopKoin() // Ensure clean state
         val context = ApplicationProvider.getApplicationContext<Context>()
+        
+        // Initialize WorkManager for tests
+        WorkManagerTestInitHelper.initializeTestWorkManager(context)
+        
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
@@ -97,5 +103,33 @@ class PrescriptionSchedulingTest {
         assertTrue("Should find a future dose after snooze", nextFuture != null)
         assertEquals(DoseStatus.SNOOZED, nextFuture?.status)
         assertTrue("Scheduled time should be in the future", nextFuture!!.scheduledTime > now)
+    }
+
+    @Test
+    fun testDeletePrescriptionCleansUpDoses() = runBlocking {
+        // GIVEN: A prescription with doses
+        val p = Prescription(name = "Delete Me", startDate = System.currentTimeMillis(), endDate = Long.MAX_VALUE)
+        val times = listOf(TimeSchedule(prescriptionId = 0, reminderTimeMinutes = 840))
+        prescriptionRepository.savePrescription(p, times)
+        
+        val allPrescriptions = prescriptionRepository.getAllPrescriptions().first()
+        assertEquals(1, allPrescriptions.size)
+        val savedPrescription = allPrescriptions[0]
+        
+        val dosesBefore = alarmDao.getDosesForDayFlow(0, Long.MAX_VALUE).first()
+        assertTrue("Should have doses before deletion", dosesBefore.isNotEmpty())
+
+        // WHEN: Deleting the prescription
+        prescriptionRepository.deletePrescription(savedPrescription)
+
+        // THEN: All related data should be gone
+        val allPrescriptionsAfter = prescriptionRepository.getAllPrescriptions().first()
+        assertEquals("Prescription should be deleted", 0, allPrescriptionsAfter.size)
+
+        val dosesAfter = alarmDao.getDosesForDayFlow(0, Long.MAX_VALUE).first()
+        assertTrue("Doses should be deleted by cascade", dosesAfter.isEmpty())
+        
+        val schedulesAfter = alarmDao.getActiveTimeSchedulesForPrescription(savedPrescription.id)
+        assertTrue("Time schedules should be deleted by cascade", schedulesAfter.isEmpty())
     }
 }

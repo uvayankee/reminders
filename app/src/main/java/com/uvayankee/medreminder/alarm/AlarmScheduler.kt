@@ -7,8 +7,18 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+
 class AlarmScheduler(private val context: Context) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+    fun triggerImmediateNotificationUpdate() {
+        val workRequest = OneTimeWorkRequestBuilder<NotificationWorker>()
+            .setInputData(androidx.work.Data.Builder().putBoolean("isUpdateOnly", true).build())
+            .build()
+        WorkManager.getInstance(context).enqueue(workRequest)
+    }
 
     fun scheduleAlarm(timeMillis: Long) {
         setAlarm(timeMillis, ALARM_ID)

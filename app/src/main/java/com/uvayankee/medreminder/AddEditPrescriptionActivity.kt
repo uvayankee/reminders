@@ -51,8 +51,35 @@ class AddEditPrescriptionActivity : AppCompatActivity() {
         binding.tvStartDate.setOnClickListener { showDatePicker() }
         binding.btnAddTime.setOnClickListener { showTimePicker() }
         binding.btnSave.setOnClickListener { savePrescription() }
+        
+        if (prescriptionId != 0L) {
+            binding.btnDelete.visibility = android.view.View.VISIBLE
+            binding.btnDelete.setOnClickListener { showDeleteConfirmation() }
+        }
 
         updateDateDisplay()
+    }
+
+    private fun showDeleteConfirmation() {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Delete Prescription?")
+            .setMessage("Are you sure you want to delete this medication and all its scheduled doses?")
+            .setPositiveButton("Delete") { _, _ ->
+                deletePrescription()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deletePrescription() {
+        lifecycleScope.launch {
+            val p = repository.getPrescriptionById(prescriptionId)
+            if (p != null) {
+                repository.deletePrescription(p)
+                Toast.makeText(this@AddEditPrescriptionActivity, "Prescription deleted", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
     }
 
     private fun loadPrescription() {
