@@ -20,14 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Lint
-        run: ./gradlew lintRelease
-
-      - name: Run Tests
-        run: ./gradlew test
+      - name: Run Lint & Tests
+        run: ./gradlew lintRelease test --no-daemon
 
   build-release:
     name: Build Release APK
@@ -46,18 +43,18 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build Release APK
         # This will use the GITHUB_RUN_NUMBER automatically due to our build.gradle.kts config
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-daemon
 
       # -------------------------------------------------------------------------
       # FUTURE: Build App Bundle (AAB) for Google Play Store
       # -------------------------------------------------------------------------
       # - name: Build App Bundle (AAB)
-      #   run: ./gradlew bundleRelease
+      #   run: ./gradlew bundleRelease --no-daemon
       # -------------------------------------------------------------------------
 
       # -------------------------------------------------------------------------
