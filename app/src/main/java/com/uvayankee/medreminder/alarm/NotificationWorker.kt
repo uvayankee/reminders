@@ -125,7 +125,8 @@ class NotificationWorker(
         )
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(com.uvayankee.medreminder.R.drawable.ic_logo_rx)
+            .setSmallIcon(com.uvayankee.medreminder.R.drawable.ic_stat_notification)
+            .setColor(androidx.core.content.ContextCompat.getColor(applicationContext, com.uvayankee.medreminder.R.color.teal_700))
             .setContentTitle("Medication Reminder")
             .setContentText(medNames)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

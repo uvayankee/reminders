@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Safe zone is roughly 72dp circle in the middle of 108dp -->
+    <group
+        android:translateX="18"
+        android:translateY="18">
+        
+        <!-- The Bell (White) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M36,66c3.3,0,6,-2.7,6,-6H30C30,63.3,32.7,66,36,66z M54,48v-15c0,-9.2,-4.9,-16.9,-13.5,-19v-2C40.5,9.5,38.5,7.5,36,7.5S31.5,9.5,31.5,12v2c-8.6,2.1,-13.5,9.8,-13.5,19v15l-6,6v3h48v-3L54,48z"/>
+        
+        <!-- The Rx Text (Green, overlaid on bell) -->
+        <!-- Approximated R -->
+        <path
+            android:fillColor="@color/brand_green"
+            android:pathData="M28,26h8c3.3,0,6,2.7,6,6s-2.7,6,-6,6h-4v8h-4V26z M32,30v4h4c1.1,0,2,-0.9,2,-2s-0.9,-2,-2,-2H32z"/>
+        <!-- Approximated x -->
+        <path
+            android:fillColor="@color/brand_green"
+            android:pathData="M38,36l4,4l4,-4l2,2l-4,4l4,4l-2,2l-4,-4l-4,4l-2,-2l4,-4l-4,-4z"/>
+    </group>
+</vector>
