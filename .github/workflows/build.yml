@@ -32,6 +32,8 @@ jobs:
     needs: checks
     # Only run the release build on pushes (merges) to the main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write # Required for creating a GitHub Release
     
     steps:
       - name: Checkout Code
@@ -50,6 +52,16 @@ jobs:
         # This will use the GITHUB_RUN_NUMBER automatically due to our build.gradle.kts config
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: app/build/outputs/apk/release/app-release.apk
       # -------------------------------------------------------------------------
       # FUTURE: Build App Bundle (AAB) for Google Play Store
       # -------------------------------------------------------------------------
@@ -78,10 +90,8 @@ jobs:
       #     BUILD_TOOLS_VERSION: "34.0.0"
       # -------------------------------------------------------------------------
 
-      - name: Upload Release APK
+      - name: Upload Release APK as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-v1.0.${{ github.run_number }}
-          # Expose the unsigned APK for now. 
-          # When you enable signing above, change this path to: ${{steps.sign_app.outputs.signedReleaseFile}}
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/release/app-release.apk
