@@ -3,7 +3,13 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Bell with a cutout cross using the even-odd fill type -->
     <path
+        android:fillType="evenOdd"
         android:fillColor="#FFFFFF"
-        android:pathData="M12,22c1.1,0,2,-0.9,2,-2h-4C10,21.1,10.9,22,12,22z M18,16v-5c0,-3.07,-1.63,-5.64,-4.5,-6.32V4c0,-0.83,-0.67,-1.5,-1.5,-1.5s-1.5,0.67,-1.5,1.5v0.68C7.64,5.36,6,7.92,6,11v5l-2,2v1h16v-1L18,16z"/>
+        android:pathData="
+            M12,22 c1.1,0,2,-0.9,2,-2 h-4 C10,21.1,10.9,22,12,22 z 
+            M18,16 v-5 c0,-3.07,-1.63,-5.64,-4.5,-6.32 V4 c0,-0.83,-0.67,-1.5,-1.5,-1.5 s-1.5,0.67,-1.5,1.5 v0.68 C7.64,5.36,6,7.92,6,11 v5 l-2,2 v1 h16 v-1 L18,16 z
+            M13,9 h-2 v2 H9 v2 h2 v2 h2 v-2 h2 v-2 h-2 V9 z
+        "/>
 </vector>
