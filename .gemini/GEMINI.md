@@ -102,7 +102,7 @@ Absolute Paths: Use absolute paths for all file operations to ensure reliability
 Proactive Persistence: Fulfill the user's request thoroughly, including implied follow-ups like updating documentation or tests, and persist through obstacles by diagnosing and adjusting strategies.
 
 11. Project Construction & Environment
-Local SDK & Java Version: Kotlin 1.9.x crashes with a `25.0.2` CoreJrtFileSystem NumberFormatException when run against Java 25+. Always use `openjdk@17` and set it locally via `sdk.dir` and `org.gradle.java.home` in `local.properties`.
+Local SDK & Java Version: Kotlin 1.9.x crashes with a `25.0.2` CoreJrtFileSystem NumberFormatException when run against Java 25+. Always use `openjdk@21` via `jenv` (`export PATH="$HOME/.jenv/bin:$PATH" && eval "$(jenv init -)" && jenv local 21.0`) and set it locally via `sdk.dir` and `org.gradle.java.home` in `local.properties`.
 Gradle/AGP Compatibility: To avoid XML v4 parsing bugs from modern `android-commandlinetools` and configuration-cache failures, use Gradle `8.9` alongside Android Gradle Plugin `8.5.0` with `org.gradle.configuration-cache=false`.
 AndroidX Requirement: Must define `android.useAndroidX=true` globally in `gradle.properties`.
 CI Pipeline: GitHub Actions `ubuntu-latest` relies on native `./gradlew assembleDebug`. Maintain `if-no-files-found: error` (or omit for default) to protect pipeline integrity.
