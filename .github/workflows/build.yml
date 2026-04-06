@@ -32,6 +32,8 @@ jobs:
     needs: checks
     # Only run the release build on pushes (merges) to the main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout Code
