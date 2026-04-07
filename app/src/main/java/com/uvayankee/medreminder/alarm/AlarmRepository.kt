@@ -156,15 +156,18 @@ class AlarmRepository(
         }.timeInMillis
 
         if (scheduledTime >= todayStart) {
-            // We should still check for uniqueness to avoid duplicate inserts if possible
-            // But for MVP the clearPendingDoses handles force case.
-            Log.i("AlarmRepository", "scheduleDoseIfMissing: Attempting insert for pId=$pId, time=$scheduledTime")
-            alarmDao.insertDoseLog(DoseLog(
-                prescriptionId = pId,
-                scheduledTime = scheduledTime,
-                reminderTimeMinutes = timeMinutes,
-                dosage = dosage
-            ))
+            val existingDose = alarmDao.getDoseByPrescriptionAndScheduledTime(pId, scheduledTime)
+            if (existingDose == null) {
+                Log.i("AlarmRepository", "scheduleDoseIfMissing: Attempting insert for pId=$pId, time=$scheduledTime")
+                alarmDao.insertDoseLog(DoseLog(
+                    prescriptionId = pId,
+                    scheduledTime = scheduledTime,
+                    reminderTimeMinutes = timeMinutes,
+                    dosage = dosage
+                ))
+            } else {
+                Log.i("AlarmRepository", "scheduleDoseIfMissing: Dose already exists for pId=$pId, time=$scheduledTime")
+            }
         }
     }
 }

@@ -72,6 +72,9 @@ interface AlarmDao {
     @Query("SELECT * FROM dose_log WHERE id = :id")
     suspend fun getDoseById(id: Long): DoseLog?
 
+    @Query("SELECT * FROM dose_log WHERE prescriptionId = :prescriptionId AND scheduledTime = :scheduledTime")
+    suspend fun getDoseByPrescriptionAndScheduledTime(prescriptionId: Long, scheduledTime: Long): DoseLog?
+
     @Query("SELECT * FROM prescription WHERE id = :id")
     suspend fun getPrescriptionByIdImmediate(id: Long): Prescription?
 
