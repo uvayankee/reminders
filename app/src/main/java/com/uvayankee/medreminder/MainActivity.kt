@@ -146,11 +146,11 @@ class MainActivity : AppCompatActivity() {
     // --- Adapters ---
 
     inner class DoseAdapter : RecyclerView.Adapter<DoseAdapter.ViewHolder>() {
-        private var items = listOf<DoseLog>()
+        private var items = listOf<List<DoseLog>>()
         private val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
         fun submitList(newItems: List<DoseLog>) {
-            items = newItems
+            items = newItems.groupBy { it.scheduledTime }.values.toList()
             notifyDataSetChanged()
         }
 
@@ -160,38 +160,58 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
+            val group = items[position]
+            val firstDose = group.first()
             
             lifecycleScope.launch {
-                val p = prescriptionRepository.getPrescriptionByIdImmediate(item.prescriptionId)
-                holder.binding.tvMedName.text = "${p?.name ?: "Unknown"} - ${item.dosage} units"
+                val namesAndDosages = group.map { dose ->
+                    val p = prescriptionRepository.getPrescriptionByIdImmediate(dose.prescriptionId)
+                    "${p?.name ?: "Unknown"} - ${dose.dosage} units"
+                }
+                holder.binding.tvMedName.text = namesAndDosages.joinToString("\n")
             }
             
-            val cal = Calendar.getInstance().apply { timeInMillis = item.scheduledTime }
+            val cal = Calendar.getInstance().apply { timeInMillis = firstDose.scheduledTime }
             holder.binding.tvTime.text = timeFormat.format(cal.time)
             
             val now = System.currentTimeMillis()
-            val isNearOrPast = now >= (item.scheduledTime - 30 * 60 * 1000)
-            val isMissed = now > (item.scheduledTime + 60 * 60 * 1000) && item.status == DoseStatus.PENDING
+            val isNearOrPast = now >= (firstDose.scheduledTime - 30 * 60 * 1000)
+
+            val hasPending = group.any { it.status == DoseStatus.PENDING }
+            val hasSnoozed = group.any { it.status == DoseStatus.SNOOZED }
+            val allTaken = group.all { it.status == DoseStatus.TAKEN }
+            val allSkipped = group.all { it.status == DoseStatus.SKIPPED }
+            val isMissed = group.any { now > (it.scheduledTime + 60 * 60 * 1000) && it.status == DoseStatus.PENDING }
+
+            var statusText = ""
+            when {
+                allTaken -> statusText = "TAKEN"
+                allSkipped -> statusText = "SKIPPED"
+                isMissed -> statusText = "MISSED"
+                hasSnoozed -> statusText = "SNOOZED"
+                hasPending -> statusText = "PENDING"
+                else -> statusText = "MIXED"
+            }
             
-            var statusText = if (isMissed) "MISSED" else item.status.name
-            if (item.status == DoseStatus.TAKEN && item.actualTime != null) {
-                val diffMin = (item.actualTime - item.scheduledTime) / (60 * 1000)
-                if (diffMin > 5) {
-                    statusText += " ($diffMin min late)"
-                } else if (diffMin < -5) {
-                    statusText += " (${-diffMin} min early)"
+            if (allTaken) {
+                if (firstDose.actualTime != null) {
+                    val diffMin = (firstDose.actualTime - firstDose.scheduledTime) / (60 * 1000)
+                    if (diffMin > 5) {
+                        statusText += " ($diffMin min late)"
+                    } else if (diffMin < -5) {
+                        statusText += " (${-diffMin} min early)"
+                    }
                 }
             }
             holder.binding.tvStatus.text = statusText
             
             when {
-                item.status == DoseStatus.TAKEN -> {
+                allTaken -> {
                     holder.binding.tvStatus.setTextColor(Color.parseColor("#4CAF50")) // Green
                     holder.binding.btnTake.visibility = View.GONE
                     holder.binding.btnSnooze.visibility = View.GONE
                 }
-                item.status == DoseStatus.SKIPPED -> {
+                allSkipped -> {
                     holder.binding.tvStatus.setTextColor(Color.GRAY)
                     holder.binding.btnTake.visibility = View.GONE
                     holder.binding.btnSnooze.visibility = View.GONE
@@ -201,7 +221,7 @@ class MainActivity : AppCompatActivity() {
                     holder.binding.btnTake.visibility = View.VISIBLE
                     holder.binding.btnSnooze.visibility = View.VISIBLE
                 }
-                item.status == DoseStatus.SNOOZED -> {
+                hasSnoozed -> {
                     holder.binding.tvStatus.setTextColor(Color.MAGENTA)
                     holder.binding.btnTake.visibility = View.VISIBLE
                     holder.binding.btnSnooze.visibility = View.VISIBLE
@@ -218,8 +238,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            holder.binding.btnTake.text = if (group.size > 1) "Take All" else "Take"
+            holder.binding.btnSnooze.text = if (group.size > 1) "Snooze All" else "Snooze"
+
+            val doseIds = group.map { it.id }.toLongArray()
+
             holder.binding.btnTake.setOnClickListener {
-                lifecycleScope.launch { alarmRepository.takeDose(item.id) }
+                lifecycleScope.launch { alarmRepository.takeDoses(doseIds) }
             }
             holder.binding.btnSnooze.setOnClickListener {
                 val options = arrayOf("5 min", "15 min", "30 min", "60 min")
@@ -229,19 +254,19 @@ class MainActivity : AppCompatActivity() {
                     .setTitle("Snooze for how long?")
                     .setItems(options) { _, which ->
                         lifecycleScope.launch { 
-                            alarmRepository.snoozeDose(item.id, minutes[which]) 
+                            alarmRepository.snoozeDoses(doseIds, minutes[which])
                         }
                     }
                     .show()
             }
 
             holder.itemView.setOnClickListener {
-                if (!isNearOrPast && item.status == DoseStatus.PENDING) {
+                if (!isNearOrPast && hasPending) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
                         .setTitle("Take Early?")
-                        .setMessage("This dose is scheduled for ${timeFormat.format(cal.time)}. Are you sure you want to take it now?")
+                        .setMessage("These doses are scheduled for ${timeFormat.format(cal.time)}. Are you sure you want to take them now?")
                         .setPositiveButton("Take Now") { _, _ ->
-                            lifecycleScope.launch { alarmRepository.takeDose(item.id) }
+                            lifecycleScope.launch { alarmRepository.takeDoses(doseIds) }
                         }
                         .setNegativeButton("Cancel", null)
                         .show()

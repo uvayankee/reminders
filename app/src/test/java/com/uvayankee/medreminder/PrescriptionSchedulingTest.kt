@@ -132,4 +132,34 @@ class PrescriptionSchedulingTest {
         val schedulesAfter = alarmDao.getActiveTimeSchedulesForPrescription(savedPrescription.id)
         assertTrue("Time schedules should be deleted by cascade", schedulesAfter.isEmpty())
     }
+
+    @Test
+    fun testEnsureFutureDosesScheduledDoesNotCreateDuplicates() = runBlocking {
+        val newPrescription = Prescription(
+            name = "Duplicate Med Test",
+            startDate = System.currentTimeMillis(),
+            endDate = System.currentTimeMillis() + 86400000
+        )
+        val times = listOf(
+            TimeSchedule(prescriptionId = 0, reminderTimeMinutes = 480) // 8:00 AM
+        )
+
+        // Schedule it the first time
+        prescriptionRepository.savePrescription(newPrescription, times)
+
+        val allPrescriptions = prescriptionRepository.getAllPrescriptions().first()
+        val pId = allPrescriptions[0].id
+
+        val initialDoses = alarmDao.getDosesForDayFlow(0, Long.MAX_VALUE).first()
+        val initialSize = initialDoses.size
+        assertTrue("Should have some doses generated initially", initialSize > 0)
+
+        // Run ensureFutureDosesScheduled manually, multiple times
+        alarmRepository.ensureFutureDosesScheduled(pId, force = false)
+        alarmRepository.ensureFutureDosesScheduled(pId, force = false)
+        alarmRepository.ensureFutureDosesScheduled(pId, force = false)
+
+        val finalDoses = alarmDao.getDosesForDayFlow(0, Long.MAX_VALUE).first()
+        assertEquals("Duplicate doses should not have been created", initialSize, finalDoses.size)
+    }
 }
