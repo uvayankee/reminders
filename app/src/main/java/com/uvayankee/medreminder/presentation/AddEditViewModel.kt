@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.db.Prescription
 import com.uvayankee.medreminder.db.TimeSchedule
+import com.uvayankee.medreminder.domain.prescription.DeletePrescriptionUseCase
+import com.uvayankee.medreminder.domain.prescription.SavePrescriptionUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +24,9 @@ data class AddEditUiState(
 )
 
 class AddEditViewModel(
-    private val repository: PrescriptionRepository
+    private val repository: PrescriptionRepository,
+    private val savePrescriptionUseCase: SavePrescriptionUseCase,
+    private val deletePrescriptionUseCase: DeletePrescriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddEditUiState())
@@ -113,7 +117,7 @@ class AddEditViewModel(
             val times = state.reminderTimes.map {
                 TimeSchedule(prescriptionId = prescriptionId, reminderTimeMinutes = it.first, dosage = it.second)
             }
-            repository.savePrescription(p, times)
+            savePrescriptionUseCase(p, times)
             _uiState.update { it.copy(isSaved = true) }
         }
     }
@@ -123,7 +127,7 @@ class AddEditViewModel(
         viewModelScope.launch {
             val p = repository.getPrescriptionById(prescriptionId)
             if (p != null) {
-                repository.deletePrescription(p)
+                deletePrescriptionUseCase(p)
                 _uiState.update { it.copy(isDeleted = true) }
             }
         }

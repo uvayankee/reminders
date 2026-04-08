@@ -15,6 +15,8 @@ import com.uvayankee.medreminder.presentation.AddEditViewModel
 import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
 import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
 import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
+import com.uvayankee.medreminder.domain.prescription.SavePrescriptionUseCase
+import com.uvayankee.medreminder.domain.prescription.DeletePrescriptionUseCase
 import org.koin.androidx.viewmodel.dsl.viewModel
 
 val appModule = module {
@@ -36,9 +38,11 @@ val appModule = module {
     factory { TakeDoseUseCase(get(), get()) }
     factory { SnoozeDoseUseCase(get(), get()) }
     factory { SkipDoseUseCase(get(), get()) }
+    factory { SavePrescriptionUseCase(get(), get()) }
+    factory { DeletePrescriptionUseCase(get(), get()) }
 
-    viewModel { MainViewModel(get(), get(), get(), get(), get()) }
-    viewModel { AddEditViewModel(get()) }
+    viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { AddEditViewModel(get(), get(), get()) }
 }
 
 class MedReminderApp : Application() {
