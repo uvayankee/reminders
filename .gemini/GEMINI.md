@@ -15,6 +15,11 @@ Persistence: Room Database (SQL-backed for medication logs).
 Build System: Gradle Kotlin DSL (.kts) via wrapper 8.9, AGP 8.5.0.
 
 2. Architecture: "Clean App" Principles
+All business logic MUST be encapsulated in UseCases. All refactors MUST follow the SOPs and principles defined in our documentation.
+Read and adhere to the following core documents before making architectural changes:
+- `docs/architecture/principles.md`
+- `docs/architecture/refactor-sop.md`
+
 We follow a strict Layered Architecture to ensure the legacy logic is isolated from the modern UI.
 
 Presentation Layer: Compose + ViewModel + StateFlow. Use Unidirectional Data Flow (UDF). ViewModels must use collectAsStateWithLifecycle().
