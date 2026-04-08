@@ -33,47 +33,6 @@ class AlarmRepository(
         alarmScheduler.triggerImmediateNotificationUpdate()
     }
 
-    suspend fun takeDoses(doseIds: LongArray) {
-        doseIds.forEach { id ->
-            val dose = alarmDao.getDoseById(id) ?: return@forEach
-            alarmDao.updateDoseLog(dose.copy(
-                status = DoseStatus.TAKEN,
-                actualTime = System.currentTimeMillis()
-            ))
-        }
-        reScheduleNextAlarm()
-    }
-
-    suspend fun snoozeDoses(doseIds: LongArray, minutes: Int? = null) {
-        val settings = alarmDao.getSettings() ?: Settings()
-        val snoozeMinutes = minutes ?: settings.reNotifyIntervalMinutes
-        val newTime = System.currentTimeMillis() + (snoozeMinutes * 60 * 1000)
-
-        doseIds.forEach { id ->
-            val dose = alarmDao.getDoseById(id) ?: return@forEach
-            alarmDao.updateDoseLog(dose.copy(
-                status = DoseStatus.SNOOZED,
-                scheduledTime = newTime
-            ))
-        }
-        reScheduleNextAlarm()
-    }
-
-    suspend fun skipDoses(doseIds: LongArray) {
-        doseIds.forEach { id ->
-            val dose = alarmDao.getDoseById(id) ?: return@forEach
-            alarmDao.updateDoseLog(dose.copy(
-                status = DoseStatus.SKIPPED,
-                actualTime = System.currentTimeMillis()
-            ))
-        }
-        reScheduleNextAlarm()
-    }
-
-    suspend fun takeDose(doseId: Long) = takeDoses(longArrayOf(doseId))
-    suspend fun snoozeDose(doseId: Long, minutes: Int? = null) = snoozeDoses(longArrayOf(doseId), minutes)
-    suspend fun skipDose(doseId: Long) = skipDoses(longArrayOf(doseId))
-
     suspend fun generateUpcomingDosesForPrescription(pId: Long) {
         Log.i("AlarmRepository", "generateUpcomingDosesForPrescription: pId=$pId")
         alarmDao.clearPendingDosesForPrescription(pId)

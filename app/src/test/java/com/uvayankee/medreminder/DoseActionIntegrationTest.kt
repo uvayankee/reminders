@@ -9,6 +9,9 @@ import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.AlarmScheduler
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.db.*
+import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
+import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
+import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -30,6 +33,9 @@ class DoseActionIntegrationTest {
     private lateinit var alarmDao: AlarmDao
     private lateinit var alarmRepository: AlarmRepository
     private lateinit var prescriptionRepository: PrescriptionRepository
+    private lateinit var takeDoseUseCase: TakeDoseUseCase
+    private lateinit var snoozeDoseUseCase: SnoozeDoseUseCase
+    private lateinit var skipDoseUseCase: SkipDoseUseCase
     private lateinit var alarmManager: AlarmManager
     private lateinit var shadowAlarmManager: org.robolectric.shadows.ShadowAlarmManager
 
@@ -47,6 +53,10 @@ class DoseActionIntegrationTest {
         val scheduler = AlarmScheduler(context)
         alarmRepository = AlarmRepository(alarmDao, scheduler)
         prescriptionRepository = PrescriptionRepository(alarmDao, alarmRepository)
+        
+        takeDoseUseCase = TakeDoseUseCase(alarmDao, alarmRepository)
+        snoozeDoseUseCase = SnoozeDoseUseCase(alarmDao, alarmRepository)
+        skipDoseUseCase = SkipDoseUseCase(alarmDao, alarmRepository)
 
         alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         shadowAlarmManager = Shadows.shadowOf(alarmManager)
@@ -80,7 +90,7 @@ class DoseActionIntegrationTest {
         assertEquals("Alarm should be set for current dose time", currentDoseTime, scheduledAlarm!!.triggerAtTime)
 
         // WHEN: I Take the current dose
-        alarmRepository.takeDose(currentDoseId)
+        takeDoseUseCase(longArrayOf(currentDoseId))
 
         // THEN: The DB status is TAKEN
         val updatedDose = alarmDao.getDoseById(currentDoseId)
@@ -101,7 +111,7 @@ class DoseActionIntegrationTest {
         alarmRepository.reScheduleNextAlarm()
 
         // WHEN: I Snooze it for 15 minutes
-        alarmRepository.snoozeDose(currentDoseId, 15)
+        snoozeDoseUseCase(longArrayOf(currentDoseId), 15)
 
         // THEN: DB status is SNOOZED
         val updatedDose = alarmDao.getDoseById(currentDoseId)
@@ -130,7 +140,7 @@ class DoseActionIntegrationTest {
         alarmRepository.reScheduleNextAlarm()
 
         // WHEN: I Skip it
-        alarmRepository.skipDose(currentDoseId)
+        skipDoseUseCase(longArrayOf(currentDoseId))
 
         // THEN: DB status is SKIPPED
         val updatedDose = alarmDao.getDoseById(currentDoseId)

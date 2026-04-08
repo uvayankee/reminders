@@ -6,6 +6,9 @@ import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.db.DoseLog
 import com.uvayankee.medreminder.db.Prescription
+import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
+import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
+import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +26,10 @@ sealed class MainUiState {
 
 class MainViewModel(
     private val alarmRepository: AlarmRepository,
-    private val prescriptionRepository: PrescriptionRepository
+    private val prescriptionRepository: PrescriptionRepository,
+    private val takeDoseUseCase: TakeDoseUseCase,
+    private val snoozeDoseUseCase: SnoozeDoseUseCase,
+    private val skipDoseUseCase: SkipDoseUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.Loading)
@@ -80,19 +86,25 @@ class MainViewModel(
 
     fun takeDose(doseId: Long) {
         viewModelScope.launch {
-            alarmRepository.takeDose(doseId)
+            takeDoseUseCase(longArrayOf(doseId))
         }
     }
 
     fun takeDoses(doseIds: LongArray) {
         viewModelScope.launch {
-            alarmRepository.takeDoses(doseIds)
+            takeDoseUseCase(doseIds)
         }
     }
 
     fun snoozeDoses(doseIds: LongArray, minutes: Int) {
         viewModelScope.launch {
-            alarmRepository.snoozeDoses(doseIds, minutes)
+            snoozeDoseUseCase(doseIds, minutes)
+        }
+    }
+
+    fun skipDoses(doseIds: LongArray) {
+        viewModelScope.launch {
+            skipDoseUseCase(doseIds)
         }
     }
 
