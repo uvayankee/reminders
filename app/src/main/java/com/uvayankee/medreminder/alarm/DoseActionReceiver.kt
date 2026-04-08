@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
+import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -12,7 +14,8 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 class DoseActionReceiver : BroadcastReceiver(), KoinComponent {
-    private val alarmRepository: AlarmRepository by inject()
+    private val takeDoseUseCase: TakeDoseUseCase by inject()
+    private val snoozeDoseUseCase: SnoozeDoseUseCase by inject()
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
@@ -26,10 +29,10 @@ class DoseActionReceiver : BroadcastReceiver(), KoinComponent {
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
             when (action) {
-                ACTION_TAKE -> alarmRepository.takeDoses(ids)
+                ACTION_TAKE -> takeDoseUseCase(ids)
                 ACTION_SNOOZE -> {
                     val snoozeMinutes = if (minutes != -1) minutes else null
-                    alarmRepository.snoozeDoses(ids, snoozeMinutes)
+                    snoozeDoseUseCase(ids, snoozeMinutes)
                 }
             }
             

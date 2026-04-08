@@ -3,12 +3,12 @@ package com.uvayankee.medreminder
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import androidx.work.Configuration
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.AlarmScheduler
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.db.*
+import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -27,6 +27,7 @@ class PrescriptionSchedulingTest {
     private lateinit var alarmDao: AlarmDao
     private lateinit var alarmRepository: AlarmRepository
     private lateinit var prescriptionRepository: PrescriptionRepository
+    private lateinit var snoozeDoseUseCase: SnoozeDoseUseCase
 
     @Before
     fun createDb() {
@@ -44,6 +45,7 @@ class PrescriptionSchedulingTest {
         val scheduler = AlarmScheduler(context)
         alarmRepository = AlarmRepository(alarmDao, scheduler)
         prescriptionRepository = PrescriptionRepository(alarmDao, alarmRepository)
+        snoozeDoseUseCase = SnoozeDoseUseCase(alarmDao, alarmRepository)
     }
 
     @After
@@ -96,7 +98,7 @@ class PrescriptionSchedulingTest {
         val doseId = alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = now, reminderTimeMinutes = 0))
 
         // WHEN: Snoozing for 15 minutes
-        alarmRepository.snoozeDose(doseId, 15)
+        snoozeDoseUseCase(longArrayOf(doseId), 15)
 
         // THEN: getNextFutureDose should find the snoozed dose at the new time
         val nextFuture = alarmDao.getNextFutureDose(now)

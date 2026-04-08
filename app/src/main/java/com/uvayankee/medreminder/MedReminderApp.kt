@@ -12,6 +12,9 @@ import com.uvayankee.medreminder.alarm.AlarmScheduler
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.presentation.MainViewModel
 import com.uvayankee.medreminder.presentation.AddEditViewModel
+import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
+import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
+import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
 import org.koin.androidx.viewmodel.dsl.viewModel
 
 val appModule = module {
@@ -29,7 +32,12 @@ val appModule = module {
     single { AlarmRepository(get(), get()) }
     single { PrescriptionRepository(get(), get()) }
 
-    viewModel { MainViewModel(get(), get()) }
+    // UseCases
+    factory { TakeDoseUseCase(get(), get()) }
+    factory { SnoozeDoseUseCase(get(), get()) }
+    factory { SkipDoseUseCase(get(), get()) }
+
+    viewModel { MainViewModel(get(), get(), get(), get(), get()) }
     viewModel { AddEditViewModel(get()) }
 }
 
