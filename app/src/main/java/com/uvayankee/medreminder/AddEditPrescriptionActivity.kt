@@ -11,24 +11,19 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.databinding.ActivityAddEditPrescriptionBinding
 import com.uvayankee.medreminder.databinding.ItemReminderTimeBinding
-import com.uvayankee.medreminder.db.Prescription
-import com.uvayankee.medreminder.db.TimeSchedule
+import com.uvayankee.medreminder.presentation.AddEditViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 class AddEditPrescriptionActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAddEditPrescriptionBinding
-    private val repository: PrescriptionRepository by inject()
-    private var selectedDate = Calendar.getInstance()
-    private var reminderTimes = mutableListOf<Pair<Int, Float>>() // Time in minutes to Dosage
-    private var prescriptionId: Long = 0
-
+    private val viewModel: AddEditViewModel by viewModel()
     private val timeAdapter = TimeAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,11 +31,13 @@ class AddEditPrescriptionActivity : AppCompatActivity() {
         binding = ActivityAddEditPrescriptionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        prescriptionId = intent.getLongExtra("id", 0)
+        val prescriptionId = intent.getLongExtra("id", 0)
         
         setupUI()
-        if (prescriptionId != 0L) {
-            loadPrescription()
+        observeUiState()
+        
+        if (savedInstanceState == null) {
+            viewModel.loadPrescription(prescriptionId)
         }
     }
 
@@ -48,16 +45,39 @@ class AddEditPrescriptionActivity : AppCompatActivity() {
         binding.rvTimes.layoutManager = LinearLayoutManager(this)
         binding.rvTimes.adapter = timeAdapter
 
-        binding.tvStartDate.setOnClickListener { showDatePicker() }
-        binding.btnAddTime.setOnClickListener { showTimePicker() }
-        binding.btnSave.setOnClickListener { savePrescription() }
-        
-        if (prescriptionId != 0L) {
-            binding.btnDelete.visibility = android.view.View.VISIBLE
-            binding.btnDelete.setOnClickListener { showDeleteConfirmation() }
+        binding.etName.doAfterTextChanged {
+            viewModel.onNameChanged(it.toString())
         }
 
-        updateDateDisplay()
+        binding.tvStartDate.setOnClickListener { showDatePicker() }
+        binding.btnAddTime.setOnClickListener { showTimePicker() }
+        binding.btnSave.setOnClickListener { viewModel.savePrescription() }
+        binding.btnDelete.setOnClickListener { showDeleteConfirmation() }
+    }
+
+    private fun observeUiState() {
+        lifecycleScope.launch {
+            viewModel.uiState.collectLatest { state ->
+                if (binding.etName.text.toString() != state.name) {
+                    binding.etName.setText(state.name)
+                }
+                
+                updateDateDisplay(state.startDate)
+                timeAdapter.submitList(state.reminderTimes)
+                
+                binding.btnDelete.visibility = if (intent.getLongExtra("id", 0) != 0L) android.view.View.VISIBLE else android.view.View.GONE
+                
+                if (state.isSaved) {
+                    Toast.makeText(this@AddEditPrescriptionActivity, "Prescription saved", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                
+                if (state.isDeleted) {
+                    Toast.makeText(this@AddEditPrescriptionActivity, "Prescription deleted", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
     }
 
     private fun showDeleteConfirmation() {
@@ -65,95 +85,46 @@ class AddEditPrescriptionActivity : AppCompatActivity() {
             .setTitle("Delete Prescription?")
             .setMessage("Are you sure you want to delete this medication and all its scheduled doses?")
             .setPositiveButton("Delete") { _, _ ->
-                deletePrescription()
+                viewModel.deletePrescription()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun deletePrescription() {
-        lifecycleScope.launch {
-            val p = repository.getPrescriptionById(prescriptionId)
-            if (p != null) {
-                repository.deletePrescription(p)
-                Toast.makeText(this@AddEditPrescriptionActivity, "Prescription deleted", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        }
-    }
-
-    private fun loadPrescription() {
-        lifecycleScope.launch {
-            val p = repository.getPrescriptionById(prescriptionId) ?: return@launch
-            binding.etName.setText(p.name)
-            selectedDate.timeInMillis = p.startDate
-            updateDateDisplay()
-            
-            val times = repository.getTimesForPrescription(prescriptionId)
-            reminderTimes.clear()
-            reminderTimes.addAll(times.map { it.reminderTimeMinutes to it.dosage })
-            timeAdapter.notifyDataSetChanged()
-        }
-    }
-
     private fun showDatePicker() {
+        val cal = Calendar.getInstance().apply { timeInMillis = viewModel.uiState.value.startDate }
         DatePickerDialog(this, { _, year, month, day ->
-            selectedDate.set(year, month, day)
-            updateDateDisplay()
-        }, selectedDate.get(Calendar.YEAR), selectedDate.get(Calendar.MONTH), selectedDate.get(Calendar.DAY_OF_MONTH)).show()
+            viewModel.onDateChanged(year, month, day)
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
     }
 
-    private fun updateDateDisplay() {
+    private fun updateDateDisplay(timeInMillis: Long) {
         val format = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        binding.tvStartDate.text = "Start Date: ${format.format(selectedDate.time)}"
+        binding.tvStartDate.text = "Start Date: ${format.format(Date(timeInMillis))}"
     }
 
     private fun showTimePicker() {
         val now = Calendar.getInstance()
         TimePickerDialog(this, { _, hour, minute ->
-            val totalMinutes = hour * 60 + minute
-            if (reminderTimes.none { it.first == totalMinutes }) {
-                reminderTimes.add(totalMinutes to 1.0f)
-                reminderTimes.sortBy { it.first }
-                timeAdapter.notifyDataSetChanged()
-            }
+            viewModel.addTime(hour, minute)
         }, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), false).show()
     }
 
-    private fun savePrescription() {
-        val name = binding.etName.text.toString()
-        if (name.isBlank()) {
-            Toast.makeText(this, "Please enter a medication name", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (reminderTimes.isEmpty()) {
-            Toast.makeText(this, "Please add at least one reminder time", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        lifecycleScope.launch {
-            val p = Prescription(
-                id = prescriptionId,
-                name = name,
-                startDate = selectedDate.timeInMillis,
-                endDate = selectedDate.timeInMillis + 365L * 24 * 60 * 60 * 1000 // 1 year default
-            )
-            val times = reminderTimes.map { 
-                TimeSchedule(prescriptionId = prescriptionId, reminderTimeMinutes = it.first, dosage = it.second)
-            }
-            repository.savePrescription(p, times)
-            finish()
-        }
-    }
-
     inner class TimeAdapter : RecyclerView.Adapter<TimeAdapter.ViewHolder>() {
+        private var items = listOf<Pair<Int, Float>>()
+
+        fun submitList(newItems: List<Pair<Int, Float>>) {
+            items = newItems
+            notifyDataSetChanged()
+        }
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val b = ItemReminderTimeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             return ViewHolder(b)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val (totalMinutes, dosage) = reminderTimes[position]
+            val (totalMinutes, dosage) = items[position]
             val hour = totalMinutes / 60
             val minute = totalMinutes % 60
             val cal = Calendar.getInstance().apply {
@@ -163,23 +134,21 @@ class AddEditPrescriptionActivity : AppCompatActivity() {
             val format = SimpleDateFormat("hh:mm a", Locale.getDefault())
             holder.binding.tvTime.text = format.format(cal.time)
             
-            // Set text without triggering watcher immediately if possible, or handle carefully
-            holder.binding.etDosage.setText(dosage.toString())
+            if (holder.binding.etDosage.text.toString() != dosage.toString()) {
+                holder.binding.etDosage.setText(dosage.toString())
+            }
             
             holder.binding.etDosage.doAfterTextChanged {
                 val newDosage = it.toString().toFloatOrNull() ?: 0f
-                if (position < reminderTimes.size) {
-                    reminderTimes[position] = reminderTimes[position].first to newDosage
-                }
+                viewModel.updateDosage(position, newDosage)
             }
 
             holder.binding.btnRemove.setOnClickListener {
-                reminderTimes.removeAt(position)
-                notifyDataSetChanged()
+                viewModel.removeTime(position)
             }
         }
 
-        override fun getItemCount() = reminderTimes.size
+        override fun getItemCount() = items.size
 
         inner class ViewHolder(val binding: ItemReminderTimeBinding) : RecyclerView.ViewHolder(binding.root)
     }

@@ -9,8 +9,10 @@ import org.koin.dsl.module
 
 import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.AlarmScheduler
-
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
+import com.uvayankee.medreminder.presentation.MainViewModel
+import com.uvayankee.medreminder.presentation.AddEditViewModel
+import org.koin.androidx.viewmodel.dsl.viewModel
 
 val appModule = module {
     single {
@@ -26,6 +28,9 @@ val appModule = module {
     single { AlarmScheduler(androidContext()) }
     single { AlarmRepository(get(), get()) }
     single { PrescriptionRepository(get(), get()) }
+
+    viewModel { MainViewModel(get(), get()) }
+    viewModel { AddEditViewModel(get()) }
 }
 
 class MedReminderApp : Application() {
