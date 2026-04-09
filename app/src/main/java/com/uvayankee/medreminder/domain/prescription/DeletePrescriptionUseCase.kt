@@ -14,8 +14,6 @@ class DeletePrescriptionUseCase(
     suspend operator fun invoke(prescription: Prescription) {
         alarmDao.deletePrescription(prescription)
         
-        // TODO: In Phase 5, this will be handled by a reactive observer
-        alarmRepository.reScheduleNextAlarm()
         alarmRepository.refreshNotifications()
     }
 }

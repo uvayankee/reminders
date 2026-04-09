@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver(), KoinComponent {
             val scope = CoroutineScope(Dispatchers.IO)
             scope.launch {
                 // Re-calculate and schedule the next alarm after reboot
-                alarmRepository.reScheduleNextAlarm()
+                alarmRepository.scheduleInitialAlarms()
             }
         }
     }

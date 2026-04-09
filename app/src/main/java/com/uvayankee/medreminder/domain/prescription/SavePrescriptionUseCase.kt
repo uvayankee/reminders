@@ -17,8 +17,5 @@ class SavePrescriptionUseCase(
         
         // Refresh alarms and extend chain (force refresh on save)
         alarmRepository.generateUpcomingDosesForPrescription(pId)
-        
-        // TODO: In Phase 5, this will be handled by a reactive observer
-        alarmRepository.reScheduleNextAlarm()
     }
 }

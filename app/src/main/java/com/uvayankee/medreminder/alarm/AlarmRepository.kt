@@ -13,20 +13,7 @@ class AlarmRepository(
         if (alarmDao.getActivePrescriptions().isEmpty()) {
             setupTestData()
         }
-        
-        reScheduleNextAlarm()
-    }
-
-    suspend fun reScheduleNextAlarm() {
-        val now = System.currentTimeMillis()
-        val nextDose = alarmDao.getNextFutureDose(now)
-        Log.i("AlarmRepository", "reScheduleNextAlarm: nextDose=$nextDose, now=$now")
-        if (nextDose != null) {
-            alarmScheduler.scheduleAlarm(nextDose.scheduledTime)
-        } else {
-            Log.i("AlarmRepository", "reScheduleNextAlarm: No future doses found.")
-            alarmScheduler.cancelAlarm()
-        }
+        // Alarms are now scheduled reactively by DoseLogObserver
     }
 
     fun refreshNotifications() {

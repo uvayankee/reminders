@@ -49,7 +49,7 @@ class PrescriptionSchedulingTest {
         val scheduler = AlarmScheduler(context)
         alarmRepository = AlarmRepository(alarmDao, scheduler)
         prescriptionRepository = PrescriptionRepository(alarmDao, alarmRepository)
-        snoozeDoseUseCase = SnoozeDoseUseCase(alarmDao, alarmRepository)
+        snoozeDoseUseCase = SnoozeDoseUseCase(alarmDao)
         savePrescriptionUseCase = SavePrescriptionUseCase(alarmDao, alarmRepository)
         deletePrescriptionUseCase = DeletePrescriptionUseCase(alarmDao, alarmRepository)
     }
@@ -90,7 +90,7 @@ class PrescriptionSchedulingTest {
         val overdueTime = System.currentTimeMillis() - 3600000 // 1 hour ago
         alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = overdueTime, reminderTimeMinutes = 0))
 
-        alarmRepository.reScheduleNextAlarm()
+        alarmRepository.scheduleInitialAlarms()
 
         val nextFuture = alarmDao.getNextFutureDose(System.currentTimeMillis())
         assertEquals("Should find no future doses", null, nextFuture)
