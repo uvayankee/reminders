@@ -13,9 +13,12 @@ import com.uvayankee.medreminder.db.*
 import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
 import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
 import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -41,6 +44,7 @@ class DoseActionIntegrationTest {
     private lateinit var skipDoseUseCase: SkipDoseUseCase
     private lateinit var alarmManager: AlarmManager
     private lateinit var shadowAlarmManager: org.robolectric.shadows.ShadowAlarmManager
+    private val testScope = CoroutineScope(Dispatchers.Default)
 
     @Before
     fun setup() {
@@ -70,24 +74,27 @@ class DoseActionIntegrationTest {
 
     @After
     fun teardown() {
+        testScope.cancel()
         db.close()
         stopKoin()
     }
 
-    private suspend fun DoseLogObserver.awaitScheduledTime(expected: Long?, tag: String) {
+    private suspend fun DoseLogObserver.awaitSchedule(expected: Long?, tag: String) {
+        println("Waiting for schedule [$tag]: expected=$expected")
         withTimeout(10000) {
-            nextScheduledTime.filter { it == expected }.first()
+            events.filter { it == expected }.first()
         }
+        println("Reached schedule [$tag]: $expected")
     }
 
     @Test
-    fun `Given a pending dose, when I Take it, then DB status updates AND next alarm schedules reactively`() = runTest {
-        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), backgroundScope)
+    fun `Given a pending dose, when I Take it, then DB status updates AND next alarm schedules reactively`() = runBlocking {
+        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), testScope)
         observer.startObserving()
         
         val now = (System.currentTimeMillis() / 1000) * 1000
         observer.advanceTime(now)
-        observer.awaitScheduledTime(null, "Initial idle")
+        observer.awaitSchedule(null, "Initial idle")
         
         val pId = alarmDao.insertPrescription(Prescription(name = "BDD Med", startDate = 0, endDate = Long.MAX_VALUE))
         val currentDoseTime = now + 10000
@@ -96,7 +103,7 @@ class DoseActionIntegrationTest {
         alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = nextDoseTime, reminderTimeMinutes = 60))
         alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = currentDoseTime, reminderTimeMinutes = 0))
         
-        observer.awaitScheduledTime(currentDoseTime, "Insert doses")
+        observer.awaitSchedule(currentDoseTime, "Insert doses")
 
         var scheduledAlarm = shadowAlarmManager.nextScheduledAlarm
         assertNotNull("Initial alarm should be scheduled", scheduledAlarm)
@@ -107,7 +114,7 @@ class DoseActionIntegrationTest {
         assertNotNull("Dose should exist in DB before taking", currentDose)
         takeDoseUseCase(longArrayOf(currentDose!!.id))
         
-        observer.awaitScheduledTime(nextDoseTime, "Take dose")
+        observer.awaitSchedule(nextDoseTime, "Take dose")
 
         // THEN: The DB status is TAKEN
         val updatedDose = alarmDao.getDoseByPrescriptionAndScheduledTime(pId, currentDoseTime)
@@ -120,26 +127,26 @@ class DoseActionIntegrationTest {
     }
 
     @Test
-    fun `Given a pending dose, when I Snooze it, then DB status is SNOOZED AND alarm reschedules reactively`() = runTest {
-        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), backgroundScope)
+    fun `Given a pending dose, when I Snooze it, then DB status is SNOOZED AND alarm reschedules reactively`() = runBlocking {
+        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), testScope)
         observer.startObserving()
 
         val now = (System.currentTimeMillis() / 1000) * 1000
         observer.advanceTime(now)
-        observer.awaitScheduledTime(null, "Initial idle")
+        observer.awaitSchedule(null, "Initial idle")
         
         val pId = alarmDao.insertPrescription(Prescription(name = "Snooze Med", startDate = 0, endDate = Long.MAX_VALUE))
         val currentDoseTime = now + 10000
         val currentDoseId = alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = currentDoseTime, reminderTimeMinutes = 0))
         
-        observer.awaitScheduledTime(currentDoseTime, "Insert dose")
+        observer.awaitSchedule(currentDoseTime, "Insert dose")
 
         // WHEN: I Snooze it for 15 minutes
         snoozeDoseUseCase(longArrayOf(currentDoseId), 15)
         
         val updatedDose = alarmDao.getDoseById(currentDoseId)
         val expectedSnoozeTime = updatedDose!!.scheduledTime
-        observer.awaitScheduledTime(expectedSnoozeTime, "Snooze dose")
+        observer.awaitSchedule(expectedSnoozeTime, "Snooze dose")
 
         // THEN: DB status is SNOOZED
         assertEquals(DoseStatus.SNOOZED, alarmDao.getDoseById(currentDoseId)?.status)
@@ -151,13 +158,13 @@ class DoseActionIntegrationTest {
     }
 
     @Test
-    fun `Given a pending dose, when I Skip it, then DB status is SKIPPED AND alarm reschedules reactively`() = runTest {
-        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), backgroundScope)
+    fun `Given a pending dose, when I Skip it, then DB status is SKIPPED AND alarm reschedules reactively`() = runBlocking {
+        val observer = DoseLogObserver(alarmDao, AlarmScheduler(ApplicationProvider.getApplicationContext()), testScope)
         observer.startObserving()
 
         val now = (System.currentTimeMillis() / 1000) * 1000
         observer.advanceTime(now)
-        observer.awaitScheduledTime(null, "Initial idle")
+        observer.awaitSchedule(null, "Initial idle")
         
         val pId = alarmDao.insertPrescription(Prescription(name = "Skip Med", startDate = 0, endDate = Long.MAX_VALUE))
         val currentDoseTime = now + 10000
@@ -166,11 +173,11 @@ class DoseActionIntegrationTest {
         alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = nextDoseTime, reminderTimeMinutes = 60))
         val currentDoseId = alarmDao.insertDoseLog(DoseLog(prescriptionId = pId, scheduledTime = currentDoseTime, reminderTimeMinutes = 0))
         
-        observer.awaitScheduledTime(currentDoseTime, "Insert doses")
+        observer.awaitSchedule(currentDoseTime, "Insert doses")
 
         // WHEN: I Skip it
         skipDoseUseCase(longArrayOf(currentDoseId))
-        observer.awaitScheduledTime(nextDoseTime, "Skip dose")
+        observer.awaitSchedule(nextDoseTime, "Skip dose")
 
         // THEN: DB status is SKIPPED
         assertEquals(DoseStatus.SKIPPED, alarmDao.getDoseById(currentDoseId)?.status)
