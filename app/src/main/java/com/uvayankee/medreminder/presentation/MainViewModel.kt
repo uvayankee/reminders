@@ -9,6 +9,7 @@ import com.uvayankee.medreminder.db.Prescription
 import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
 import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
 import com.uvayankee.medreminder.domain.dose.TakeDoseUseCase
+import com.uvayankee.medreminder.domain.prescription.DeletePrescriptionUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ class MainViewModel(
     private val prescriptionRepository: PrescriptionRepository,
     private val takeDoseUseCase: TakeDoseUseCase,
     private val snoozeDoseUseCase: SnoozeDoseUseCase,
-    private val skipDoseUseCase: SkipDoseUseCase
+    private val skipDoseUseCase: SkipDoseUseCase,
+    private val deletePrescriptionUseCase: DeletePrescriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.Loading)
@@ -110,7 +112,7 @@ class MainViewModel(
 
     fun deletePrescription(prescription: Prescription) {
         viewModelScope.launch {
-            prescriptionRepository.deletePrescription(prescription)
+            deletePrescriptionUseCase(prescription)
         }
     }
 }

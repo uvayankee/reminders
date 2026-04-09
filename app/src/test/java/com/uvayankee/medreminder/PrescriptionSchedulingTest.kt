@@ -9,6 +9,8 @@ import com.uvayankee.medreminder.alarm.AlarmScheduler
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.db.*
 import com.uvayankee.medreminder.domain.dose.SnoozeDoseUseCase
+import com.uvayankee.medreminder.domain.prescription.DeletePrescriptionUseCase
+import com.uvayankee.medreminder.domain.prescription.SavePrescriptionUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -28,6 +30,8 @@ class PrescriptionSchedulingTest {
     private lateinit var alarmRepository: AlarmRepository
     private lateinit var prescriptionRepository: PrescriptionRepository
     private lateinit var snoozeDoseUseCase: SnoozeDoseUseCase
+    private lateinit var savePrescriptionUseCase: SavePrescriptionUseCase
+    private lateinit var deletePrescriptionUseCase: DeletePrescriptionUseCase
 
     @Before
     fun createDb() {
@@ -46,6 +50,8 @@ class PrescriptionSchedulingTest {
         alarmRepository = AlarmRepository(alarmDao, scheduler)
         prescriptionRepository = PrescriptionRepository(alarmDao, alarmRepository)
         snoozeDoseUseCase = SnoozeDoseUseCase(alarmDao, alarmRepository)
+        savePrescriptionUseCase = SavePrescriptionUseCase(alarmDao, alarmRepository)
+        deletePrescriptionUseCase = DeletePrescriptionUseCase(alarmDao, alarmRepository)
     }
 
     @After
@@ -66,7 +72,7 @@ class PrescriptionSchedulingTest {
             TimeSchedule(prescriptionId = 0, reminderTimeMinutes = 840) // 2:00 PM
         )
 
-        prescriptionRepository.savePrescription(newPrescription, times)
+        savePrescriptionUseCase(newPrescription, times)
 
         val allPrescriptions = prescriptionRepository.getAllPrescriptions().first()
         assertEquals("Should have 1 prescription", 1, allPrescriptions.size)
@@ -112,7 +118,7 @@ class PrescriptionSchedulingTest {
         // GIVEN: A prescription with doses
         val p = Prescription(name = "Delete Me", startDate = System.currentTimeMillis(), endDate = Long.MAX_VALUE)
         val times = listOf(TimeSchedule(prescriptionId = 0, reminderTimeMinutes = 840))
-        prescriptionRepository.savePrescription(p, times)
+        savePrescriptionUseCase(p, times)
         
         val allPrescriptions = prescriptionRepository.getAllPrescriptions().first()
         assertEquals(1, allPrescriptions.size)
@@ -122,7 +128,7 @@ class PrescriptionSchedulingTest {
         assertTrue("Should have doses before deletion", dosesBefore.isNotEmpty())
 
         // WHEN: Deleting the prescription
-        prescriptionRepository.deletePrescription(savedPrescription)
+        deletePrescriptionUseCase(savedPrescription)
 
         // THEN: All related data should be gone
         val allPrescriptionsAfter = prescriptionRepository.getAllPrescriptions().first()
@@ -147,7 +153,7 @@ class PrescriptionSchedulingTest {
         )
 
         // Schedule it the first time
-        prescriptionRepository.savePrescription(newPrescription, times)
+        savePrescriptionUseCase(newPrescription, times)
 
         val allPrescriptions = prescriptionRepository.getAllPrescriptions().first()
         val pId = allPrescriptions[0].id
