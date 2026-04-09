@@ -2,26 +2,26 @@ package com.uvayankee.medreminder.alarm
 
 import android.util.Log
 import com.uvayankee.medreminder.db.AlarmDao
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class DoseLogObserver(
     private val alarmDao: AlarmDao,
     private val alarmScheduler: AlarmScheduler,
-    dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate
+    private val externalScope: CoroutineScope? = null
 ) {
-    private val scope = CoroutineScope(dispatcher)
+    private val scope = externalScope ?: CoroutineScope(Dispatchers.Main.immediate)
     private var observationJob: Job? = null
     private val currentTimeFlow = MutableStateFlow(System.currentTimeMillis())
     
-    // For test synchronization
-    private var nextScheduleSignal = CompletableDeferred<Unit>()
+    private val _nextScheduledTime = MutableStateFlow<Long?>(null)
+    val nextScheduledTime: StateFlow<Long?> = _nextScheduledTime.asStateFlow()
 
     /**
      * Starts observing the database for the next future dose and automatically schedules the alarm.
@@ -32,23 +32,17 @@ class DoseLogObserver(
             currentTimeFlow.collectLatest { now ->
                 alarmDao.getNextFutureDoseFlow(now).collectLatest { nextDose ->
                     Log.i("DoseLogObserver", "Database state changed. Next dose: $nextDose")
-                    if (nextDose != null) {
-                        alarmScheduler.scheduleAlarm(nextDose.scheduledTime)
+                    val time = nextDose?.scheduledTime
+                    _nextScheduledTime.value = time
+                    
+                    if (time != null) {
+                        alarmScheduler.scheduleAlarm(time)
                     } else {
                         alarmScheduler.cancelAlarm()
                     }
-                    
-                    // Signal for tests
-                    val signal = nextScheduleSignal
-                    nextScheduleSignal = CompletableDeferred()
-                    signal.complete(Unit)
                 }
             }
         }
-    }
-
-    suspend fun waitForNextSchedule() {
-        nextScheduleSignal.await()
     }
 
     /**

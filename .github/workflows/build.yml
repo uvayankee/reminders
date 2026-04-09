@@ -29,7 +29,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run Lint & Tests
-        run: ./gradlew lintRelease test --no-daemon
+        run: ./gradlew lintRelease testDebugUnitTest --no-daemon
 
       - name: Upload Test Reports
         if: always()
