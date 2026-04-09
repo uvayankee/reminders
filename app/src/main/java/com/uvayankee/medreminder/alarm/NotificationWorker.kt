@@ -50,11 +50,8 @@ class NotificationWorker(
             alarmScheduler.cancelReNotify()
         }
 
-        // 2. Sequential Chaining: Schedule the next alarm
-        if (!isReNotify) {
-            scheduleNextAlarm()
-        }
-
+        // 2. Alarms are now scheduled reactively by DoseLogObserver
+        
         return Result.success()
     }
 
@@ -145,13 +142,6 @@ class NotificationWorker(
     private fun cancelNotification() {
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
-    }
-
-    private suspend fun scheduleNextAlarm() {
-        val nextDose = alarmDao.getNextFutureDose(System.currentTimeMillis())
-        nextDose?.let {
-            alarmScheduler.scheduleAlarm(it.scheduledTime)
-        }
     }
 
     private suspend fun scheduleReNotify() {

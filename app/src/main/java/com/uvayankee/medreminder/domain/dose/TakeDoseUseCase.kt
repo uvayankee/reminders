@@ -1,15 +1,13 @@
 package com.uvayankee.medreminder.domain.dose
 
-import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.db.AlarmDao
 import com.uvayankee.medreminder.db.DoseStatus
 
 class TakeDoseUseCase(
-    private val alarmDao: AlarmDao,
-    private val alarmRepository: AlarmRepository
+    private val alarmDao: AlarmDao
 ) {
     /**
-     * Marks the specified doses as TAKEN and updates the next alarm.
+     * Marks the specified doses as TAKEN.
      */
     suspend operator fun invoke(doseIds: LongArray) {
         doseIds.forEach { id ->
@@ -19,7 +17,5 @@ class TakeDoseUseCase(
                 actualTime = System.currentTimeMillis()
             ))
         }
-        // TODO: In Phase 5, this will be handled by a reactive observer
-        alarmRepository.reScheduleNextAlarm()
     }
 }

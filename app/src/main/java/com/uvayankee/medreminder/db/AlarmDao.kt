@@ -54,6 +54,9 @@ interface AlarmDao {
     @Query("SELECT * FROM dose_log WHERE (status = 'PENDING' OR status = 'SNOOZED') AND scheduledTime > :now ORDER BY scheduledTime ASC LIMIT 1")
     suspend fun getNextFutureDose(now: Long): DoseLog?
 
+    @Query("SELECT * FROM dose_log WHERE (status = 'PENDING' OR status = 'SNOOZED') AND scheduledTime > :now ORDER BY scheduledTime ASC LIMIT 1")
+    fun getNextFutureDoseFlow(now: Long): Flow<DoseLog?>
+
     @Query("SELECT * FROM dose_log WHERE (status = 'PENDING' OR status = 'SNOOZED') ORDER BY scheduledTime ASC LIMIT 1")
     suspend fun getNextPendingDose(): DoseLog?
 

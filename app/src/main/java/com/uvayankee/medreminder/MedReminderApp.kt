@@ -9,6 +9,7 @@ import org.koin.dsl.module
 
 import com.uvayankee.medreminder.alarm.AlarmRepository
 import com.uvayankee.medreminder.alarm.AlarmScheduler
+import com.uvayankee.medreminder.alarm.DoseLogObserver
 import com.uvayankee.medreminder.alarm.PrescriptionRepository
 import com.uvayankee.medreminder.presentation.MainViewModel
 import com.uvayankee.medreminder.presentation.AddEditViewModel
@@ -18,6 +19,7 @@ import com.uvayankee.medreminder.domain.dose.SkipDoseUseCase
 import com.uvayankee.medreminder.domain.prescription.SavePrescriptionUseCase
 import com.uvayankee.medreminder.domain.prescription.DeletePrescriptionUseCase
 import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.android.ext.android.get
 
 val appModule = module {
     single {
@@ -33,11 +35,12 @@ val appModule = module {
     single { AlarmScheduler(androidContext()) }
     single { AlarmRepository(get(), get()) }
     single { PrescriptionRepository(get(), get()) }
+    single { DoseLogObserver(get(), get()) }
 
     // UseCases
-    factory { TakeDoseUseCase(get(), get()) }
-    factory { SnoozeDoseUseCase(get(), get()) }
-    factory { SkipDoseUseCase(get(), get()) }
+    factory { TakeDoseUseCase(get()) }
+    factory { SnoozeDoseUseCase(get()) }
+    factory { SkipDoseUseCase(get()) }
     factory { SavePrescriptionUseCase(get(), get()) }
     factory { DeletePrescriptionUseCase(get(), get()) }
 
@@ -53,5 +56,9 @@ class MedReminderApp : Application() {
             androidContext(this@MedReminderApp)
             modules(appModule)
         }
+
+        // Start reactive alarm observation
+        val observer: DoseLogObserver = get()
+        observer.startObserving()
     }
 }
