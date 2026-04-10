@@ -19,10 +19,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+data class DoseItem(
+    val dose: DoseLog,
+    val medName: String
+)
+
+data class PrescriptionItem(
+    val prescription: Prescription,
+    val reminderTimes: List<Int>
+)
+
 sealed class MainUiState {
     data object Loading : MainUiState()
-    data class Schedule(val doses: List<DoseLog>, val selectedDate: Calendar) : MainUiState()
-    data class Medications(val prescriptions: List<Prescription>) : MainUiState()
+    data class Schedule(val doses: List<DoseItem>, val selectedDate: Calendar) : MainUiState()
+    data class Medications(val prescriptions: List<PrescriptionItem>) : MainUiState()
 }
 
 class MainViewModel(
@@ -76,11 +86,19 @@ class MainViewModel(
                 val end = cal.timeInMillis
 
                 prescriptionRepository.getDosesForDay(start, end).collectLatest { doses ->
-                    _uiState.update { MainUiState.Schedule(doses, selectedDate) }
+                    val doseItems = doses.map { dose ->
+                        val med = prescriptionRepository.getPrescriptionByIdImmediate(dose.prescriptionId)
+                        DoseItem(dose, med?.name ?: "Unknown")
+                    }
+                    _uiState.update { MainUiState.Schedule(doseItems, selectedDate) }
                 }
             } else {
                 prescriptionRepository.getAllPrescriptions().collectLatest { prescriptions ->
-                    _uiState.update { MainUiState.Medications(prescriptions) }
+                    val pItems = prescriptions.map { p ->
+                        val times = prescriptionRepository.getTimesForPrescription(p.id)
+                        PrescriptionItem(p, times.map { it.reminderTimeMinutes })
+                    }
+                    _uiState.update { MainUiState.Medications(pItems) }
                 }
             }
         }

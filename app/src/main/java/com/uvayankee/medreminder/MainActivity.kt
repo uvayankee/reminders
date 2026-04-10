@@ -20,13 +20,16 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import com.uvayankee.medreminder.databinding.ActivityMainBinding
+import com.uvayankee.medreminder.databinding.ItemDateBinding
 import com.uvayankee.medreminder.databinding.ItemDoseBinding
 import com.uvayankee.medreminder.databinding.ItemPrescriptionBinding
 import com.uvayankee.medreminder.db.DoseLog
 import com.uvayankee.medreminder.db.DoseStatus
 import com.uvayankee.medreminder.db.Prescription
+import com.uvayankee.medreminder.presentation.DoseItem
 import com.uvayankee.medreminder.presentation.MainUiState
 import com.uvayankee.medreminder.presentation.MainViewModel
+import com.uvayankee.medreminder.presentation.PrescriptionItem
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -39,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     
     private val prescriptionAdapter = PrescriptionAdapter()
     private val doseAdapter = DoseAdapter()
+    private val dateAdapter = DateAdapter()
     
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -61,9 +65,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupUI() {
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         
-        binding.calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-            viewModel.onDateChanged(year, month, dayOfMonth)
-        }
+        binding.rvDates.adapter = dateAdapter
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -87,17 +89,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     is MainUiState.Schedule -> {
                         binding.fabAdd.visibility = View.GONE
-                        binding.calendarView.visibility = View.VISIBLE
-                        // Use silent update for date to avoid loop
-                        if (binding.calendarView.date != state.selectedDate.timeInMillis) {
-                            binding.calendarView.date = state.selectedDate.timeInMillis
-                        }
+                        binding.rvDates.visibility = View.VISIBLE
+                        dateAdapter.setSelectedDate(state.selectedDate)
                         binding.recyclerView.adapter = doseAdapter
                         doseAdapter.submitList(state.doses)
                     }
                     is MainUiState.Medications -> {
                         binding.fabAdd.visibility = View.VISIBLE
-                        binding.calendarView.visibility = View.GONE
+                        binding.rvDates.visibility = View.GONE
                         binding.recyclerView.adapter = prescriptionAdapter
                         prescriptionAdapter.submitList(state.prescriptions)
                     }
@@ -125,12 +124,54 @@ class MainActivity : AppCompatActivity() {
 
     // --- Adapters ---
 
+    inner class DateAdapter : RecyclerView.Adapter<DateAdapter.ViewHolder>() {
+        private var selectedDate: Calendar = Calendar.getInstance()
+        private val items: List<Calendar> = (0..6).map { i ->
+            Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, i) }
+        }
+
+        fun setSelectedDate(newDate: Calendar) {
+            selectedDate = newDate
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val b = ItemDateBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(b)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = items[position]
+            val isSelected = item.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR) &&
+                             item.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR)
+
+            val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
+            holder.binding.tvDayName.text = dayFormat.format(item.time)
+            holder.binding.tvDayNumber.text = item.get(Calendar.DAY_OF_MONTH).toString()
+
+            if (isSelected) {
+                holder.binding.llContainer.setBackgroundColor(Color.parseColor("#E3F2FD"))
+                holder.binding.tvDayNumber.setTextColor(Color.parseColor("#1976D2"))
+            } else {
+                holder.binding.llContainer.setBackgroundColor(Color.TRANSPARENT)
+                holder.binding.tvDayNumber.setTextColor(Color.BLACK)
+            }
+
+            holder.itemView.setOnClickListener {
+                viewModel.onDateChanged(item.get(Calendar.YEAR), item.get(Calendar.MONTH), item.get(Calendar.DAY_OF_MONTH))
+            }
+        }
+
+        override fun getItemCount() = items.size
+        inner class ViewHolder(val binding: ItemDateBinding) : RecyclerView.ViewHolder(binding.root)
+    }
+
     inner class DoseAdapter : RecyclerView.Adapter<DoseAdapter.ViewHolder>() {
-        private var items = listOf<List<DoseLog>>()
+        private var items = listOf<List<DoseItem>>()
         private val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
-        fun submitList(newItems: List<DoseLog>) {
-            items = newItems.groupBy { it.scheduledTime }.values.toList()
+        fun submitList(newItems: List<DoseItem>) {
+            items = newItems.groupBy { it.dose.scheduledTime }.values.toList()
             notifyDataSetChanged()
         }
 
@@ -141,37 +182,36 @@ class MainActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val group = items[position]
-            val firstDose = group.first()
+            val firstItem = group.first()
+            val firstDose = firstItem.dose
             
-            // In a full refactor, medication names would be part of the UI state
-            holder.binding.tvMedName.text = "Loading..." 
+            holder.binding.tvMedName.text = group.joinToString("\n") { it.medName }
             
             val cal = Calendar.getInstance().apply { timeInMillis = firstDose.scheduledTime }
             holder.binding.tvTime.text = timeFormat.format(cal.time)
             
             val now = System.currentTimeMillis()
             val isNearOrPast = now >= (firstDose.scheduledTime - 30 * 60 * 1000)
+            val isAtOrAfter = now >= firstDose.scheduledTime
 
-            val hasPending = group.any { it.status == DoseStatus.PENDING }
-            val hasSnoozed = group.any { it.status == DoseStatus.SNOOZED }
-            val allTaken = group.all { it.status == DoseStatus.TAKEN }
-            val allSkipped = group.all { it.status == DoseStatus.SKIPPED }
-            val isMissed = group.any { now > (it.scheduledTime + 60 * 60 * 1000) && it.status == DoseStatus.PENDING }
+            val hasPending = group.any { it.dose.status == DoseStatus.PENDING }
+            val hasSnoozed = group.any { it.dose.status == DoseStatus.SNOOZED }
+            val allTaken = group.all { it.dose.status == DoseStatus.TAKEN }
+            val allSkipped = group.all { it.dose.status == DoseStatus.SKIPPED }
+            val isMissed = group.any { now > (it.dose.scheduledTime + 60 * 60 * 1000) && it.dose.status == DoseStatus.PENDING }
 
-            var statusText = ""
-            when {
-                allTaken -> statusText = "TAKEN"
-                allSkipped -> statusText = "SKIPPED"
-                isMissed -> statusText = "MISSED"
-                hasSnoozed -> statusText = "SNOOZED"
-                hasPending -> statusText = "PENDING"
-                else -> statusText = "MIXED"
+            var statusText = when {
+                allTaken -> "TAKEN"
+                allSkipped -> "SKIPPED"
+                isMissed -> "MISSED"
+                hasSnoozed -> "SNOOZED"
+                hasPending -> "PENDING"
+                else -> "MIXED"
             }
             
             if (allTaken && firstDose.actualTime != null) {
                 val diffMin = (firstDose.actualTime - firstDose.scheduledTime) / (60 * 1000)
-                if (diffMin > 5) statusText += " ($diffMin min late)"
-                else if (diffMin < -5) statusText += " (${-diffMin} min early)"
+                if (diffMin < -5) statusText += " (${-diffMin} min early)"
             }
             holder.binding.tvStatus.text = statusText
             
@@ -189,17 +229,17 @@ class MainActivity : AppCompatActivity() {
                 isMissed -> {
                     holder.binding.tvStatus.setTextColor(Color.RED)
                     holder.binding.btnTake.visibility = View.VISIBLE
-                    holder.binding.btnSnooze.visibility = View.VISIBLE
+                    holder.binding.btnSnooze.visibility = if (isAtOrAfter) View.VISIBLE else View.GONE
                 }
                 hasSnoozed -> {
                     holder.binding.tvStatus.setTextColor(Color.MAGENTA)
                     holder.binding.btnTake.visibility = View.VISIBLE
-                    holder.binding.btnSnooze.visibility = View.VISIBLE
+                    holder.binding.btnSnooze.visibility = if (isAtOrAfter) View.VISIBLE else View.GONE
                 }
-                isNearOrPast -> {
-                    holder.binding.tvStatus.setTextColor(Color.BLUE)
+                hasPending -> {
+                    holder.binding.tvStatus.setTextColor(if (isNearOrPast) Color.BLUE else Color.GRAY)
                     holder.binding.btnTake.visibility = View.VISIBLE
-                    holder.binding.btnSnooze.visibility = View.VISIBLE
+                    holder.binding.btnSnooze.visibility = if (isAtOrAfter) View.VISIBLE else View.GONE
                 }
                 else -> {
                     holder.binding.tvStatus.setTextColor(Color.GRAY)
@@ -211,10 +251,21 @@ class MainActivity : AppCompatActivity() {
             holder.binding.btnTake.text = if (group.size > 1) "Take All" else "Take"
             holder.binding.btnSnooze.text = if (group.size > 1) "Snooze All" else "Snooze"
 
-            val doseIds = group.map { it.id }.toLongArray()
+            val doseIds = group.map { it.dose.id }.toLongArray()
 
             holder.binding.btnTake.setOnClickListener {
-                viewModel.takeDoses(doseIds)
+                if (isNearOrPast || allTaken || allSkipped) {
+                    viewModel.takeDoses(doseIds)
+                } else {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Take Early?")
+                        .setMessage("These doses are scheduled for ${timeFormat.format(cal.time)}. Are you sure you want to take them now?")
+                        .setPositiveButton("Take Now") { _, _ ->
+                            viewModel.takeDoses(doseIds)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
             }
             holder.binding.btnSnooze.setOnClickListener {
                 val options = arrayOf("5 min", "15 min", "30 min", "60 min")
@@ -229,16 +280,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             holder.itemView.setOnClickListener {
-                if (!isNearOrPast && hasPending) {
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("Take Early?")
-                        .setMessage("These doses are scheduled for ${timeFormat.format(cal.time)}. Are you sure you want to take them now?")
-                        .setPositiveButton("Take Now") { _, _ ->
-                            viewModel.takeDoses(doseIds)
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                }
+                // Row click intentionally left empty now that 'Take' button handles early logic
             }
         }
 
@@ -247,9 +289,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class PrescriptionAdapter : RecyclerView.Adapter<PrescriptionAdapter.ViewHolder>() {
-        private var items = listOf<Prescription>()
+        private var items = listOf<PrescriptionItem>()
+        private val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
-        fun submitList(newItems: List<Prescription>) {
+        fun submitList(newItems: List<PrescriptionItem>) {
             items = newItems
             notifyDataSetChanged()
         }
@@ -261,15 +304,24 @@ class MainActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = items[position]
-            holder.binding.tvName.text = item.name
-            holder.binding.tvTimes.text = "Reminders: ..." // Simplified for now
+            val prescription = item.prescription
+            holder.binding.tvName.text = prescription.name
+            
+            val timesText = item.reminderTimes.sorted().joinToString(", ") { minutes ->
+                val cal = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, minutes / 60)
+                    set(Calendar.MINUTE, minutes % 60)
+                }
+                timeFormat.format(cal.time)
+            }
+            holder.binding.tvTimes.text = "Reminders: $timesText"
             
             holder.binding.btnDelete.setOnClickListener {
                 com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle("Delete Prescription?")
-                    .setMessage("Are you sure you want to delete ${item.name} and all its scheduled doses?")
+                    .setMessage("Are you sure you want to delete ${prescription.name} and all its scheduled doses?")
                     .setPositiveButton("Delete") { _, _ ->
-                        viewModel.deletePrescription(item)
+                        viewModel.deletePrescription(prescription)
                         Toast.makeText(this@MainActivity, "Prescription deleted", Toast.LENGTH_SHORT).show()
                     }
                     .setNegativeButton("Cancel", null)
@@ -278,7 +330,7 @@ class MainActivity : AppCompatActivity() {
 
             holder.itemView.setOnClickListener {
                 val intent = Intent(this@MainActivity, AddEditPrescriptionActivity::class.java).apply {
-                    putExtra("id", item.id)
+                    putExtra("id", prescription.id)
                 }
                 startActivity(intent)
             }

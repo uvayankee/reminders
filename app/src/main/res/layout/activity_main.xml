@@ -21,11 +21,14 @@
             android:text="Medications" />
     </com.google.android.material.tabs.TabLayout>
 
-    <CalendarView
-        android:id="@+id/calendarView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvDates"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:visibility="visible"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintTop_toBottomOf="@id/tabLayout" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -35,7 +38,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/calendarView" />
+        app:layout_constraintTop_toBottomOf="@id/rvDates" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"

@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:gravity="center_vertical">
+        android:gravity="top">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -44,18 +44,26 @@
                 android:textStyle="italic" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btnSnooze"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Snooze" />
+            android:orientation="vertical"
+            android:gravity="end">
 
-        <Button
-            android:id="@+id/btnTake"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Take" />
+            <Button
+                android:id="@+id/btnTake"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Take" />
+
+            <Button
+                android:id="@+id/btnSnooze"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Snooze" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
