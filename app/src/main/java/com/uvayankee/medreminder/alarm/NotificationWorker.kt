@@ -1,6 +1,7 @@
 package com.uvayankee.medreminder.alarm
 
 import android.app.NotificationChannel
+import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -57,15 +58,22 @@ class NotificationWorker(
 
     private suspend fun showNotification(doses: List<DoseLog>, forceAlert: Boolean) {
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "medication_reminders"
+        val groupId = "medication_alarms_group"
+        val channelId = "medication_reminders_v2"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Define a group to avoid "Others" label in App Info
+            val channelGroup = NotificationChannelGroup(groupId, "Medication Reminders")
+            notificationManager.createNotificationChannelGroup(channelGroup)
+
             val channel = NotificationChannel(
                 channelId,
-                "Medication Reminders",
+                "Medication Alarms",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Shows reminders for medications"
+                description = "Shows critical reminders for medications"
+                setGroup(groupId)
+                setBypassDnd(true)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -127,6 +135,8 @@ class NotificationWorker(
             .setContentTitle("Medication Reminder")
             .setContentText(medNames)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .addAction(android.R.drawable.ic_menu_edit, if (doses.size > 1) "Take All" else "Take", takePendingIntent)
             .addAction(android.R.drawable.ic_menu_recent_history, "Snooze 5m", snoozePendingIntent5)
