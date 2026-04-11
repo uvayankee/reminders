@@ -37,7 +37,7 @@ Permissions: Explicitly handle SCHEDULE_EXACT_ALARM (Android 12+) and POST_NOTIF
 
 Edge-to-Edge: All screens must be edge-to-edge by default (Mandatory in API 36). Use WindowInsets for padding.
 
-Notifications: Must use Notification Channels. For doses, use the IMPORTANCE_HIGH channel with "Insistent" flags.
+Notifications: Must use Notification Channels. For doses, use the IMPORTANCE_HIGH channel. The 'Insistent' flag (FLAG_INSISTENT) should NOT be implemented.
 
 4. Coding Style & Patterns
 Naming: * Composables: PascalCase.
