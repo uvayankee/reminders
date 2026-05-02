@@ -13,11 +13,16 @@ class BootReceiver : BroadcastReceiver(), KoinComponent {
     private val alarmRepository: AlarmRepository by inject()
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        val action = intent.action
+        if (action == Intent.ACTION_BOOT_COMPLETED ||
+            action == Intent.ACTION_TIMEZONE_CHANGED ||
+            action == Intent.ACTION_TIME_CHANGED) {
             val scope = CoroutineScope(Dispatchers.IO)
             scope.launch {
-                // Re-calculate and schedule the next alarm after reboot
-                alarmRepository.scheduleInitialAlarms()
+                alarmRepository.adjustAlarmsForTimezoneChange()
+                if (action == Intent.ACTION_BOOT_COMPLETED) {
+                    alarmRepository.scheduleInitialAlarms()
+                }
             }
         }
     }
