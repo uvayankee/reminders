@@ -93,4 +93,7 @@ interface AlarmDao {
     @Transaction
     @Query("SELECT * FROM dose_log WHERE status = 'PENDING' OR status = 'SNOOZED' ORDER BY scheduledTime ASC")
     fun getPendingDosesFlow(): Flow<List<DoseLog>>
+
+    @Query("SELECT * FROM dose_log WHERE status = 'PENDING' OR status = 'SNOOZED'")
+    suspend fun getAllPendingAndSnoozedDoses(): List<DoseLog>
 }
