@@ -20,6 +20,41 @@ class AlarmRepository(
         alarmScheduler.triggerImmediateNotificationUpdate()
     }
 
+    suspend fun adjustAlarmsForTimezoneChange() {
+        Log.i("AlarmRepository", "Adjusting pending alarms for timezone change")
+        val pendingDoses = alarmDao.getAllPendingAndSnoozedDoses().filter { it.status == DoseStatus.PENDING }
+        for (dose in pendingDoses) {
+            val rem = dose.reminderTimeMinutes * 60000L
+            val x = dose.scheduledTime - rem
+            val d = Math.round(x.toDouble() / 86400000.0)
+
+            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                timeInMillis = d * 86400000L
+            }
+            val year = utcCal.get(Calendar.YEAR)
+            val month = utcCal.get(Calendar.MONTH)
+            val day = utcCal.get(Calendar.DAY_OF_MONTH)
+
+            val newCal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, day)
+                set(Calendar.HOUR_OF_DAY, dose.reminderTimeMinutes / 60)
+                set(Calendar.MINUTE, dose.reminderTimeMinutes % 60)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val newScheduledTime = newCal.timeInMillis
+            if (newScheduledTime != dose.scheduledTime) {
+                alarmDao.updateDoseLog(dose.copy(scheduledTime = newScheduledTime))
+                Log.i("AlarmRepository", "Adjusted dose ${dose.id} for timezone change: ${dose.scheduledTime} -> $newScheduledTime")
+            }
+        }
+
+        generateFutureDosesForAll()
+    }
+
     suspend fun generateUpcomingDosesForPrescription(pId: Long) {
         Log.i("AlarmRepository", "generateUpcomingDosesForPrescription: pId=$pId")
         alarmDao.clearPendingDosesForPrescription(pId)
