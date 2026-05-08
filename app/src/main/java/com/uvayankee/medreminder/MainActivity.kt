@@ -18,6 +18,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import android.view.Menu
+import android.view.MenuItem
 import com.google.android.material.tabs.TabLayout
 import com.uvayankee.medreminder.databinding.ActivityMainBinding
 import com.uvayankee.medreminder.databinding.ItemDateBinding
@@ -60,6 +62,22 @@ class MainActivity : AppCompatActivity() {
         setupUI()
         checkPermissions()
         observeUiState()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_resync -> {
+                viewModel.resyncAlarms()
+                Toast.makeText(this, "Alarms resynchronized", Toast.LENGTH_SHORT).show()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun setupUI() {

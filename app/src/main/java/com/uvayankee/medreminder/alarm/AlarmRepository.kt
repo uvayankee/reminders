@@ -20,6 +20,16 @@ class AlarmRepository(
         alarmScheduler.triggerImmediateNotificationUpdate()
     }
 
+    suspend fun resyncAllAlarms() {
+        Log.i("AlarmRepository", "Resyncing all alarms globally")
+        alarmDao.clearAllPendingAndSnoozedDoses()
+        val prescriptions = alarmDao.getActivePrescriptions()
+        prescriptions.forEach {
+            ensureFutureDosesScheduled(it.id, force = true)
+        }
+        refreshNotifications()
+    }
+
     suspend fun adjustAlarmsForTimezoneChange() {
         Log.i("AlarmRepository", "Adjusting pending alarms for timezone change")
         val pendingDoses = alarmDao.getAllPendingAndSnoozedDoses().filter { it.status == DoseStatus.PENDING }

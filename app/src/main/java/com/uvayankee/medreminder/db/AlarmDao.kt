@@ -96,4 +96,7 @@ interface AlarmDao {
 
     @Query("SELECT * FROM dose_log WHERE status = 'PENDING' OR status = 'SNOOZED'")
     suspend fun getAllPendingAndSnoozedDoses(): List<DoseLog>
+
+    @Query("DELETE FROM dose_log WHERE status = 'PENDING' OR status = 'SNOOZED'")
+    suspend fun clearAllPendingAndSnoozedDoses()
 }
