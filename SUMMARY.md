@@ -25,6 +25,7 @@
 *   **Safety Window:** Implemented a 30-minute buffer; doses more than 30 minutes in the future require a confirmation dialog to "Take Early" to prevent accidental misuse.
 
 ## Technical Improvements & Bug Fixes
+*   **Timezone Resilience:** Added a `TimezoneReceiver` that automatically recalculates and reschedules all pending alarms when the device's timezone or system time changes, ensuring medication reminders remain accurate during travel.
 *   **Room Migration:** Modernized the legacy SQLite schema into a clean Room database structure (currently at version 2).
 *   **Koin DI:** implemented dependency injection for Repositories, DAOs, and Utilities.
 *   **Unit Testing:** Added a suite of Robolectric tests in `app/src/test` to verify scheduling logic and prevent regressions.
@@ -32,7 +33,7 @@
 *   **Loop Fix:** Resolved an issue where overdue doses caused the notification sound to fire every 10 seconds by switching to a more precise "Future-only" scheduling query.
 
 ## Current State
-*   **Building:** Successfully compiles with Java 17 and Gradle 8.9.
+*   **Building:** Successfully compiles with Java 21 (required for KSP/Kotlin compatibility) and Gradle 9.1.0.
 *   **Reliability:** The "chain" is extended for 7 days every time a prescription is saved or an alarm fires.
 *   **Permissions:** Properly handles Android 13+ Notification permissions and Android 12+ Exact Alarm permissions.
 

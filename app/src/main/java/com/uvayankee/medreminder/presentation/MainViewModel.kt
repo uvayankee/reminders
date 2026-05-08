@@ -133,4 +133,10 @@ class MainViewModel(
             deletePrescriptionUseCase(prescription)
         }
     }
+
+    fun resyncAlarms() {
+        viewModelScope.launch {
+            alarmRepository.resyncAllAlarms()
+        }
+    }
 }
